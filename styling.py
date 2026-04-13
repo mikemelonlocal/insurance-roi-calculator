@@ -187,34 +187,42 @@ div[data-testid='stAlert'] { border-radius: 8px; }
 .copy-btn:hover { background: #114E38; }
 .copy-btn.copied { background: #114E38; }
 
-/* ── Dark mode ─────────────────────────────────────────────────────────── */
-@media (prefers-color-scheme: dark) {
-    .stApp { background: #1a1a1a !important; }
-    p, .stMarkdown p, div[data-testid='stMarkdownContainer'] p { color: #e0e0e0 !important; }
-    h1, h2, h3 { color: #6DBE45 !important; }
-    div[data-testid='metric-container'] { background: #2a2a2a !important; border-color: #444 !important; }
-    div[data-testid='metric-container'] div[data-testid='stMetricValue'] { color: #e0e0e0 !important; }
-    div[data-testid='metric-container'] label { color: #6DBE45 !important; }
-    .prod-card { background-color: #2a2a2a !important; border-left-color: #6DBE45 !important; }
-    .prod-card-title { color: #6DBE45 !important; }
-    section[data-testid='stSidebar'] { background: #222 !important; }
-    section[data-testid='stSidebar'] * { color: #e0e0e0 !important; }
-    div[data-testid='stDataFrame'] table,
-    div[data-testid='stDataFrame'] tbody,
-    div[data-testid='stDataFrame'] tr,
-    div[data-testid='stDataFrame'] td { background-color: #2a2a2a !important; color: #e0e0e0 !important; }
-    div[data-testid='stDataFrame'] tbody tr:nth-child(even) { background-color: #333 !important; }
-    div[data-testid='stDataFrame'] * { color: #e0e0e0 !important; }
-    div[data-baseweb='select'] > div,
-    div[data-baseweb='base-input'] > div,
-    input[type='number'], input[type='text'], textarea {
-        background-color: #2a2a2a !important; color: #e0e0e0 !important; border-color: #555 !important;
-    }
-    label[data-testid='stWidgetLabel'],
-    .stNumberInput label, .stSelectbox label, .stCheckbox label { color: #6DBE45 !important; }
-    hr { border-color: #444 !important; }
-    div[data-testid='stAlert'] { background-color: #2a2a2a !important; }
+/* ── Dark mode — scoped to Streamlit's theme, not OS preference ──────── */
+[data-testid="stApp"][class*="dark"],
+[data-testid="stAppViewContainer"].st-emotion-cache-dark,
+html[data-theme="dark"] .stApp,
+.stApp[data-theme="dark"] {
+    background: #1a1a1a !important;
 }
+[data-theme="dark"] p,
+[data-theme="dark"] .stMarkdown p,
+[data-theme="dark"] div[data-testid='stMarkdownContainer'] p { color: #e0e0e0 !important; }
+[data-theme="dark"] h1, [data-theme="dark"] h2, [data-theme="dark"] h3 { color: #6DBE45 !important; }
+[data-theme="dark"] div[data-testid='metric-container'] { background: #2a2a2a !important; border-color: #444 !important; }
+[data-theme="dark"] div[data-testid='metric-container'] div[data-testid='stMetricValue'] { color: #e0e0e0 !important; }
+[data-theme="dark"] div[data-testid='metric-container'] label { color: #6DBE45 !important; }
+[data-theme="dark"] .prod-card { background-color: #2a2a2a !important; border-left-color: #6DBE45 !important; }
+[data-theme="dark"] .prod-card-title { color: #6DBE45 !important; }
+[data-theme="dark"] section[data-testid='stSidebar'] { background: #222 !important; }
+[data-theme="dark"] div[data-testid='stDataFrame'] table,
+[data-theme="dark"] div[data-testid='stDataFrame'] tbody,
+[data-theme="dark"] div[data-testid='stDataFrame'] tr,
+[data-theme="dark"] div[data-testid='stDataFrame'] td { background-color: #2a2a2a !important; color: #e0e0e0 !important; }
+[data-theme="dark"] div[data-testid='stDataFrame'] tbody tr:nth-child(even) { background-color: #333 !important; }
+[data-theme="dark"] div[data-testid='stDataFrame'] * { color: #e0e0e0 !important; }
+[data-theme="dark"] div[data-baseweb='select'] > div,
+[data-theme="dark"] div[data-baseweb='base-input'] > div,
+[data-theme="dark"] input[type='number'],
+[data-theme="dark"] input[type='text'],
+[data-theme="dark"] textarea {
+    background-color: #2a2a2a !important; color: #e0e0e0 !important; border-color: #555 !important;
+}
+[data-theme="dark"] label[data-testid='stWidgetLabel'],
+[data-theme="dark"] .stNumberInput label,
+[data-theme="dark"] .stSelectbox label,
+[data-theme="dark"] .stCheckbox label { color: #6DBE45 !important; }
+[data-theme="dark"] hr { border-color: #444 !important; }
+[data-theme="dark"] div[data-testid='stAlert'] { background-color: #2a2a2a !important; }
 </style>
 """
 
