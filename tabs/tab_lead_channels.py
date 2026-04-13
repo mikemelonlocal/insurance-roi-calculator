@@ -133,28 +133,55 @@ def render(t1_data=None):
                 unsafe_allow_html=True,
             )
 
-    # ── ROI per Channel (combines with Tab 1 data) ────────────────────────────
+    # ── ROI per Channel ────────────────────────────────────────────────────
+    st.divider()
+    st.subheader('ROI per Channel: Cost vs. Commission Earned')
+
+    # Commission source selector
+    roi_options = ['Enter manually']
     if t1_data:
-        st.divider()
-        st.subheader('ROI per Channel: Cost vs. Commission Earned')
+        for d in t1_data.values():
+            name = d['product'].replace('🚗 ', '').replace('🏠 ', '').replace('🏢 ', '')
+            roi_options.append(f'{name} ({fmt(d["total_commission_per_policy"])})')
+
+    roi_source = st.selectbox(
+        'Commission to compare against',
+        roi_options,
+        key='t3_roi_source',
+        help='Select a product from Tab 1, or enter a custom value',
+    )
+
+    if roi_source == 'Enter manually':
+        commission_value = st.number_input(
+            'Average Commission per Closed Household ($)',
+            value=0.0, min_value=0.0, step=50.0,
+            key='t3_manual_comm',
+            help='Enter the commission the agent earns per closed household',
+        )
+        commission_value = validate_numeric(commission_value)
+    else:
+        # Find matching product from t1_data
+        commission_value = 0.0
+        if t1_data:
+            product_keys = list(t1_data.keys())
+            selected_idx = roi_options.index(roi_source) - 1  # offset by 1 for "Enter manually"
+            if 0 <= selected_idx < len(product_keys):
+                commission_value = t1_data[product_keys[selected_idx]]['total_commission_per_policy']
+
+    if commission_value > 0:
         st.markdown(
-            '<p style="font-size:0.9rem;color:#666;margin-bottom:0.5rem;">'
-            'How does the cost to close compare against the average commission earned? '
-            'Uses your Tab 1 commission data to calculate net ROI per closed household.</p>',
+            f'<p style="font-size:0.9rem;color:#666;margin-bottom:0.5rem;">'
+            f'Comparing each channel\'s cost to close against <strong>{fmt(commission_value)}</strong> '
+            f'in commission earned per household.</p>',
             unsafe_allow_html=True,
         )
 
-        # Average commission across all products (1 policy each, weighted by product)
-        avg_commission = sum(
-            d['total_commission_per_policy'] for d in t1_data.values()
-        ) / max(len(t1_data), 1)
-
         channels_with_roi = []
         for r in results:
-            net = avg_commission - r['total_cost_to_close']
+            net = commission_value - r['total_cost_to_close']
             channels_with_roi.append({
                 **r,
-                'avg_commission': avg_commission,
+                'avg_commission': commission_value,
                 'net_roi': net,
             })
 
@@ -173,6 +200,8 @@ def render(t1_data=None):
                     unsafe_allow_html=True,
                 )
                 copy_to_clipboard_button(fmt(cr['net_roi']), label='Copy ROI', key=f'copy_roi_{i}')
+    else:
+        st.info('Enter a commission value or select a product above to see ROI per channel.')
 
     # ── Detail cards ─────────────────────────────────────────────────────────
     st.divider()
