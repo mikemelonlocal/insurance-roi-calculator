@@ -227,10 +227,12 @@ def render():
     cs_fig = build_cross_sell_chart(bundles)
     st.plotly_chart(cs_fig, use_container_width=True)
 
-    full_bundle = bundles[-1]
+    best_bundle = max(bundles, key=lambda b: b['value'])
     st.markdown(
-        f'<p style="font-size:0.88rem;color:#555;">💡 A fully cross-sold household is worth '
-        f'<strong>{fmt(full_bundle["value"])}</strong> in lifetime commission.</p>',
+        f'<p style="font-size:0.88rem;color:#555;">💡 Best cross-sell opportunity: '
+        f'<strong>{best_bundle["bundle"]}</strong> is worth '
+        f'<strong>{fmt(best_bundle["value"])}</strong> per household in lifetime commission. '
+        f'(Home + Renters excluded — both are fire products.)</p>',
         unsafe_allow_html=True,
     )
 

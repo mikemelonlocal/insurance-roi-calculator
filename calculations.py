@@ -159,41 +159,39 @@ def sensitivity_retention(t1_data, delta_years_list):
 # ── Cross-sell analysis (Tab 1 add-on) ───────────────────────────────────────
 
 def calc_cross_sell(t1_data):
-    """Compute household-level lifetime value for cross-sell bundles.
+    """Compute household-level lifetime value for realistic cross-sell bundles.
 
-    Returns a list of dicts: [{'bundle': 'Auto + Home', 'value': 1837.5}, ...]
-    Considers single products, pairs, and the full bundle (1 policy each).
+    Home and Renters are both fire products so they are rarely bundled together.
+    Only shows: singles, Auto + Home, Auto + Renters (skips Home + Renters and
+    the full three-product bundle).
     """
     keys = list(t1_data.keys())
     bundles = []
 
-    # Singles
-    for k in keys:
+    # Helper to get clean name and per-policy commission
+    def _info(k):
         d = t1_data[k]
         name = d['product'].replace('🚗 ', '').replace('🏠 ', '').replace('🏢 ', '')
         c = calc_commission(d['premium'], d['commission_pct'], d['years'], 1)
-        bundles.append({'bundle': name, 'value': c['total_commission_per_policy']})
+        return name, c['total_commission_per_policy']
 
-    # Pairs
+    # Singles
+    for k in keys:
+        name, val = _info(k)
+        bundles.append({'bundle': name, 'value': val})
+
+    # Realistic pairs only — skip Home + Renters (both fire products)
+    excluded_pairs = {frozenset({'home', 'renters'})}
     from itertools import combinations
     for combo in combinations(keys, 2):
+        if frozenset(combo) in excluded_pairs:
+            continue
         names = []
         total = 0.0
         for k in combo:
-            d = t1_data[k]
-            names.append(d['product'].replace('🚗 ', '').replace('🏠 ', '').replace('🏢 ', ''))
-            c = calc_commission(d['premium'], d['commission_pct'], d['years'], 1)
-            total += c['total_commission_per_policy']
+            name, val = _info(k)
+            names.append(name)
+            total += val
         bundles.append({'bundle': ' + '.join(names), 'value': total})
-
-    # Full bundle
-    total = 0.0
-    names = []
-    for k in keys:
-        d = t1_data[k]
-        names.append(d['product'].replace('🚗 ', '').replace('🏠 ', '').replace('🏢 ', ''))
-        c = calc_commission(d['premium'], d['commission_pct'], d['years'], 1)
-        total += c['total_commission_per_policy']
-    bundles.append({'bundle': ' + '.join(names), 'value': total})
 
     return bundles
