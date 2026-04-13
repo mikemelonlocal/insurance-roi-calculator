@@ -6,8 +6,10 @@ Run with:  streamlit run app.py
 import os
 import streamlit as st
 
-from config import APP_TITLE, APP_VERSION, PRESETS, SIDEBAR_IMAGE
-from styling import inject_css
+from config import APP_TITLE, APP_VERSION, PRESETS, SIDEBAR_IMAGE, SHAREABLE_PARAMS, PRODUCTS
+from styling import inject_css, inject_localstorage_sync
+from exports import build_batch_zip
+from utils import fmt, now_local
 from tabs import (
     tab_lifetime_value,
     tab_break_even,
@@ -24,6 +26,18 @@ st.set_page_config(
 )
 
 inject_css()
+inject_localstorage_sync()
+
+# ── URL query params → session state (shareable scenarios) ───────────────────
+qp = st.query_params
+for param in SHAREABLE_PARAMS:
+    qp_val = qp.get(param)
+    if qp_val is not None:
+        try:
+            st.session_state[f't1_{param}'] = float(qp_val)
+        except (ValueError, TypeError):
+            if param == 'agent_name':
+                st.session_state['agent_name'] = str(qp_val)
 
 # ── Sidebar ──────────────────────────────────────────────────────────────────
 with st.sidebar:
@@ -54,6 +68,26 @@ with st.sidebar:
 
     st.divider()
 
+    # ── Share Scenario Link ──────────────────────────────────────────────────
+    st.subheader('Share This Scenario')
+    if st.button('Generate Share Link', key='gen_share_link'):
+        params = {}
+        for key in PRODUCTS:
+            for field in ['prem', 'comm', 'yrs', 'policies']:
+                sk = f't1_{key}_{field}'
+                val = st.session_state.get(sk)
+                if val is not None:
+                    params[f'{key}_{field}'] = str(val)
+        agent = st.session_state.get('agent_name', '')
+        if agent:
+            params['agent_name'] = agent
+
+        query_str = '&'.join(f'{k}={v}' for k, v in params.items())
+        st.code(f'?{query_str}', language=None)
+        st.caption('Append this to your app URL to share the current scenario.')
+
+    st.divider()
+
     st.subheader('App Info')
     st.markdown(f"""
     <div style="color:#1a1a1a;">
@@ -77,6 +111,7 @@ with st.sidebar:
         <li>📧 HTML (email-friendly, charts work)</li>
         <li>📄 PDF (formal, ready to send)</li>
         <li>📊 Excel (edit offline, share with the team)</li>
+        <li>📦 Batch ZIP (all tabs in one download)</li>
     </ul>
 
     <p><strong>Questions?</strong> Ping Mike Long</p>
@@ -116,10 +151,68 @@ with tab2:
     tab_break_even.render(t1_data=t1_data)
 
 with tab3:
-    tab_lead_channels.render()
+    tab_lead_channels.render(t1_data=t1_data)
 
 with tab4:
     tab_talk_tracks.render()
 
 with tab5:
     tab_how_to_use.render()
+
+# ── Batch Export (bottom of page) ────────────────────────────────────────────
+st.divider()
+st.markdown(
+    '<h3 style="color:#114E38;font-family:\'Playfair Display\',Georgia,serif;text-align:center;">'
+    '📦 Batch Export — All Tabs</h3>',
+    unsafe_allow_html=True,
+)
+st.markdown(
+    '<p style="color:#666;font-size:0.95rem;margin-bottom:1rem;text-align:center;">'
+    'Download all tab reports in a single ZIP file.</p>',
+    unsafe_allow_html=True,
+)
+
+if st.button('Generate Batch ZIP', key='batch_zip'):
+    with st.spinner('Building reports...'):
+        from exports import html_wrap, build_html_table, create_formatted_excel
+
+        agent_name = st.session_state.get('agent_name', '') or None
+        ts = now_local().strftime("%Y%m%d_%H%M")
+        files = {}
+
+        # Tab 1 HTML
+        grand_total = sum(d['total_revenue'] for d in t1_data.values())
+        headers = ['Product', 'Annual Premium', 'Commission %', 'Years', 'Policies',
+                   'Commission/Year', 'Lifetime Comm/Policy', 'Total Commission']
+        rows = []
+        for d in t1_data.values():
+            rows.append([d['product'], fmt(d['premium']), f"{d['commission_pct']:.1f}%",
+                        f"{d['years']:.1f}", d['policies'], fmt(d['commission_per_year']),
+                        fmt(d['total_commission_per_policy']), fmt(d['total_revenue'])])
+        total_row = ['GRAND TOTAL', '', '', '', '', '', '', fmt(grand_total)]
+        body = ('<h1>ROI Calculator Results</h1>'
+                f'<div class="subtitle">Grand Total: {fmt(grand_total)}</div>'
+                + build_html_table(headers, rows, total_row))
+        files[f'roi_report_{ts}.html'] = html_wrap('ROI Report', body, agent_name=agent_name).encode('utf-8')
+
+        # Tab 1 Excel
+        import pandas as pd
+        excel_df = pd.DataFrame([{
+            'Product': d['product'], 'Annual Premium': d['premium'],
+            'Commission %': d['commission_pct'], 'Years': d['years'],
+            'Policies': d['policies'], 'Commission per Year': d['commission_per_year'],
+            'Lifetime Commission': d['total_commission_per_policy'],
+            'Total Commission': d['total_revenue'],
+        } for d in t1_data.values()])
+        files[f'roi_data_{ts}.xlsx'] = create_formatted_excel(excel_df, 'ROI Calculator')
+
+        zip_data = build_batch_zip(files)
+        if zip_data:
+            st.download_button(
+                label='📦 Download ZIP',
+                data=zip_data,
+                file_name=f'melon_reports_{ts}.zip',
+                mime='application/zip',
+            )
+        else:
+            st.warning('No reports could be generated.')

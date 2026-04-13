@@ -154,3 +154,46 @@ def sensitivity_retention(t1_data, delta_years_list):
             total += c['total_revenue']
         results[delta] = total
     return results
+
+
+# ── Cross-sell analysis (Tab 1 add-on) ───────────────────────────────────────
+
+def calc_cross_sell(t1_data):
+    """Compute household-level lifetime value for cross-sell bundles.
+
+    Returns a list of dicts: [{'bundle': 'Auto + Home', 'value': 1837.5}, ...]
+    Considers single products, pairs, and the full bundle (1 policy each).
+    """
+    keys = list(t1_data.keys())
+    bundles = []
+
+    # Singles
+    for k in keys:
+        d = t1_data[k]
+        name = d['product'].replace('🚗 ', '').replace('🏠 ', '').replace('🏢 ', '')
+        c = calc_commission(d['premium'], d['commission_pct'], d['years'], 1)
+        bundles.append({'bundle': name, 'value': c['total_commission_per_policy']})
+
+    # Pairs
+    from itertools import combinations
+    for combo in combinations(keys, 2):
+        names = []
+        total = 0.0
+        for k in combo:
+            d = t1_data[k]
+            names.append(d['product'].replace('🚗 ', '').replace('🏠 ', '').replace('🏢 ', ''))
+            c = calc_commission(d['premium'], d['commission_pct'], d['years'], 1)
+            total += c['total_commission_per_policy']
+        bundles.append({'bundle': ' + '.join(names), 'value': total})
+
+    # Full bundle
+    total = 0.0
+    names = []
+    for k in keys:
+        d = t1_data[k]
+        names.append(d['product'].replace('🚗 ', '').replace('🏠 ', '').replace('🏢 ', ''))
+        c = calc_commission(d['premium'], d['commission_pct'], d['years'], 1)
+        total += c['total_commission_per_policy']
+    bundles.append({'bundle': ' + '.join(names), 'value': total})
+
+    return bundles

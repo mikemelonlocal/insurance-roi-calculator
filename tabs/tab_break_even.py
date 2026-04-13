@@ -8,11 +8,12 @@ import streamlit as st
 from config import PRODUCTS, DEFAULT_COMMISSION_PCT
 from utils import fmt, validate_numeric, safe_divide, now_local
 from calculations import calc_break_even_single, calc_all_combinations, pareto_filter
-from charts import build_pareto_scatter, classify_efficiency
+from charts import build_pareto_scatter, build_goal_gauge, classify_efficiency
 from exports import (
     html_wrap, build_html_table, metric_card_html,
     build_pdf_report, create_formatted_excel, REPORTLAB_AVAILABLE,
 )
+from styling import copy_to_clipboard_button
 
 
 def render(t1_data=None):
@@ -158,6 +159,52 @@ def render(t1_data=None):
                 f'{n} closed-won {"app" if n == 1 else "apps"}',
                 help=f'Close {n} to cover {fmt(effective_budget)}',
             )
+
+    # ── Goal Tracker ────────────────────────────────────────────────────────
+    st.divider()
+    st.subheader('Goal Tracker: How Close Are You?')
+    st.markdown(
+        '<p style="font-size:0.9rem;color:#666;margin-bottom:0.5rem;">'
+        'Enter how many policies the agent has closed this month to see progress toward break-even.</p>',
+        unsafe_allow_html=True,
+    )
+
+    goal_cols = st.columns(len(keys))
+    for i, (col, k) in enumerate(zip(goal_cols, keys)):
+        target = be[k]
+        with col:
+            closed = st.number_input(
+                f'{t2_data[k]["product"]} Closed This Month',
+                value=0, min_value=0, step=1,
+                key=f'goal_{k}',
+            )
+            if target > 0:
+                gauge = build_goal_gauge(closed, target, t2_data[k]['product'])
+                st.plotly_chart(gauge, use_container_width=True)
+                pct = min(closed / target * 100, 100)
+                if pct >= 100:
+                    st.success(f'Break-even reached!')
+                elif pct >= 50:
+                    st.info(f'{target - closed} more to break even')
+                else:
+                    st.warning(f'{target - closed} more to break even')
+
+    # Total revenue from closed policies this month
+    total_closed_rev = sum(
+        st.session_state.get(f'goal_{k}', 0) * t2_data[k]['rev_per_close']
+        for k in keys
+    )
+    remaining = max(0, effective_budget - total_closed_rev)
+
+    tcr1, tcr2 = st.columns(2)
+    with tcr1:
+        st.metric('Revenue from Closed Policies', fmt(total_closed_rev))
+        copy_to_clipboard_button(fmt(total_closed_rev), label='Copy', key='copy_closed_rev')
+    with tcr2:
+        if remaining > 0:
+            st.metric('Still Needed to Break Even', fmt(remaining))
+        else:
+            st.metric('Above Break-Even', fmt(-remaining + (total_closed_rev - effective_budget)))
 
     st.divider()
     st.subheader('All Combinations')

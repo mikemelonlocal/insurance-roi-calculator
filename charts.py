@@ -185,6 +185,86 @@ def build_lead_comparison_chart(channels):
     return fig
 
 
+# ── Tab 1: Cross-sell horizontal bar ─────────────────────────────────────────
+
+def build_cross_sell_chart(bundles):
+    """bundles: list of dicts with 'bundle' (str) and 'value' (float)."""
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        y=[b['bundle'] for b in bundles],
+        x=[b['value'] for b in bundles],
+        orientation='h',
+        marker_color=[DARK_GREEN if '+' in b['bundle'] and b == bundles[-1]
+                      else PRI_GREEN for b in bundles],
+        text=[fmt(b['value']) for b in bundles],
+        textposition='outside',
+    ))
+    fig.update_layout(
+        **_base_layout(height=max(250, len(bundles) * 45)),
+        xaxis=dict(tickprefix='$', tickfont=_AXIS_TICK,
+                   title=dict(text='Lifetime Household Value (1 policy each)',
+                              font=dict(color='#1a1a1a'))),
+        yaxis=dict(tickfont=_AXIS_TICK, autorange='reversed'),
+    )
+    return fig
+
+
+# ── Tab 2: Goal progress gauge ──────────────────────────────────────────────
+
+def build_goal_gauge(closed_this_month, target, product_label):
+    """Simple horizontal progress bar as a Plotly figure."""
+    pct = min(closed_this_month / target * 100, 100) if target > 0 else 0
+    color = PRI_GREEN if pct >= 100 else '#F1CB20' if pct >= 50 else '#FF6B6B'
+
+    fig = go.Figure(go.Indicator(
+        mode='gauge+number',
+        value=closed_this_month,
+        number={'suffix': f' / {target}'},
+        title={'text': product_label, 'font': {'size': 14, 'color': '#1a1a1a'}},
+        gauge={
+            'axis': {'range': [0, target], 'tickfont': {'color': '#1a1a1a'}},
+            'bar': {'color': color},
+            'bgcolor': '#e0e0e0',
+            'borderwidth': 0,
+        },
+    ))
+    fig.update_layout(height=180, margin=dict(t=40, b=10, l=30, r=30),
+                      paper_bgcolor='rgba(0,0,0,0)', font=_FONT)
+    return fig
+
+
+# ── Tab 3: ROI per channel bar chart ────────────────────────────────────────
+
+def build_channel_roi_chart(channels_with_roi):
+    """channels_with_roi: list of dicts with 'name', 'total_cost_to_close', 'avg_commission', 'net_roi'."""
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        name='Cost to Close',
+        x=[c['name'] for c in channels_with_roi],
+        y=[c['total_cost_to_close'] for c in channels_with_roi],
+        marker_color='#FF6B6B',
+        text=[fmt(c['total_cost_to_close']) for c in channels_with_roi],
+        textposition='outside',
+    ))
+    fig.add_trace(go.Bar(
+        name='Avg Commission Earned',
+        x=[c['name'] for c in channels_with_roi],
+        y=[c['avg_commission'] for c in channels_with_roi],
+        marker_color=PRI_GREEN,
+        text=[fmt(c['avg_commission']) for c in channels_with_roi],
+        textposition='outside',
+    ))
+    fig.update_layout(
+        **_base_layout(height=400),
+        barmode='group',
+        legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1,
+                    font=dict(color='#1a1a1a')),
+        yaxis=dict(showgrid=True, gridcolor=BORDER, tickprefix='$', tickfont=_AXIS_TICK),
+        xaxis=dict(tickfont=_AXIS_TICK),
+    )
+    return fig
+
+
 # ── Matplotlib conversion for PDF ───────────────────────────────────────────
 
 def plotly_to_matplotlib_image(fig_plotly, width_inches=7, height_inches=4):

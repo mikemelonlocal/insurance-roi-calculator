@@ -6,11 +6,12 @@ import streamlit as st
 from config import DEFAULT_HOURLY_WAGE, DEFAULT_LEAD_CHANNELS
 from utils import fmt, validate_numeric, now_local
 from calculations import calc_lead_channel
-from charts import build_lead_comparison_chart
+from charts import build_lead_comparison_chart, build_channel_roi_chart
 from exports import (
     html_wrap, build_html_table, metric_card_html,
     build_pdf_report, create_formatted_excel, REPORTLAB_AVAILABLE,
 )
+from styling import copy_to_clipboard_button
 
 
 def _init_channels():
@@ -19,7 +20,7 @@ def _init_channels():
         st.session_state['t3_channels'] = [dict(ch) for ch in DEFAULT_LEAD_CHANNELS]
 
 
-def render():
+def render(t1_data=None):
     _init_channels()
     channels = st.session_state['t3_channels']
 
@@ -131,6 +132,47 @@ def render():
                 f'when you factor in time.</div>',
                 unsafe_allow_html=True,
             )
+
+    # ── ROI per Channel (combines with Tab 1 data) ────────────────────────────
+    if t1_data:
+        st.divider()
+        st.subheader('ROI per Channel: Cost vs. Commission Earned')
+        st.markdown(
+            '<p style="font-size:0.9rem;color:#666;margin-bottom:0.5rem;">'
+            'How does the cost to close compare against the average commission earned? '
+            'Uses your Tab 1 commission data to calculate net ROI per closed household.</p>',
+            unsafe_allow_html=True,
+        )
+
+        # Average commission across all products (1 policy each, weighted by product)
+        avg_commission = sum(
+            d['total_commission_per_policy'] for d in t1_data.values()
+        ) / max(len(t1_data), 1)
+
+        channels_with_roi = []
+        for r in results:
+            net = avg_commission - r['total_cost_to_close']
+            channels_with_roi.append({
+                **r,
+                'avg_commission': avg_commission,
+                'net_roi': net,
+            })
+
+        roi_fig = build_channel_roi_chart(channels_with_roi)
+        st.plotly_chart(roi_fig, use_container_width=True)
+
+        roi_cols = st.columns(len(channels_with_roi))
+        for i, cr in enumerate(channels_with_roi):
+            with roi_cols[i % len(roi_cols)]:
+                color = '#2E7D32' if cr['net_roi'] > 0 else '#C62828'
+                st.markdown(
+                    f'<div style="text-align:center;padding:8px;">'
+                    f'<div style="font-size:0.8rem;color:#666;font-weight:600;">{cr["name"]} Net ROI</div>'
+                    f'<div style="font-size:1.4rem;font-weight:700;color:{color};">{fmt(cr["net_roi"])}</div>'
+                    f'<div style="font-size:0.75rem;color:#999;">per closed household</div></div>',
+                    unsafe_allow_html=True,
+                )
+                copy_to_clipboard_button(fmt(cr['net_roi']), label='Copy ROI', key=f'copy_roi_{i}')
 
     # ── Detail cards ─────────────────────────────────────────────────────────
     st.divider()

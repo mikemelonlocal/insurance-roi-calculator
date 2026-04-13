@@ -9,7 +9,7 @@ BORDER = '#D9D9D9'
 
 # App metadata
 APP_TITLE = 'Commission Goldmine | Melon Local'
-APP_VERSION = '4.0'
+APP_VERSION = '4.1'
 SIDEBAR_IMAGE = 'melon_graphic.svg'
 
 # Default commission rate
@@ -72,3 +72,11 @@ DEFAULT_LEAD_CHANNELS = [
 
 # Max iterations for break-even combo generation to prevent freezing
 MAX_COMBO_ITERATIONS = 500_000
+
+# URL query-param keys that can be shared (Tab 1 inputs)
+SHAREABLE_PARAMS = [
+    'auto_prem', 'auto_comm', 'auto_yrs', 'auto_policies',
+    'home_prem', 'home_comm', 'home_yrs', 'home_policies',
+    'renters_prem', 'renters_comm', 'renters_yrs', 'renters_policies',
+    'agent_name',
+]

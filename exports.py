@@ -1,6 +1,7 @@
-"""Consolidated export builders for HTML, PDF, and Excel."""
+"""Consolidated export builders for HTML, PDF, Excel, and batch zip."""
 
 import io
+import zipfile
 
 import pandas as pd
 import streamlit as st
@@ -62,9 +63,12 @@ _HTML_CSS = (
 )
 
 
-def html_wrap(title, body):
+def html_wrap(title, body, agent_name=None):
     """Wrap *body* HTML in a branded template."""
     ts = now_local().strftime(f"%Y-%m-%d %I:%M %p {get_tz_label()}")
+    prepared_for = ''
+    if agent_name:
+        prepared_for = f'<div style="text-align:center;font-size:1rem;color:#114E38;font-weight:600;margin-bottom:20px;">Prepared for {agent_name}</div>'
     return (
         '<!DOCTYPE html><html><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width, initial-scale=1.0">'
@@ -72,7 +76,7 @@ def html_wrap(title, body):
         f'<title>{title}</title>'
         f'<style>{_HTML_CSS}</style></head><body>'
         '<div class="topbar">Insurance ROI Calculator</div>'
-        + body +
+        + prepared_for + body +
         f'<div class="footer">Generated {ts} by Insurance ROI Calculator — Melon Local</div>'
         '</body></html>'
     )
@@ -109,7 +113,7 @@ def build_html_table(headers, rows, total_row=None):
 
 # ── PDF builder ──────────────────────────────────────────────────────────────
 
-def build_pdf_report(title, subtitle, table_data, col_widths, chart_fig=None):
+def build_pdf_report(title, subtitle, table_data, col_widths, chart_fig=None, agent_name=None):
     """Build a PDF report. Returns bytes or None if reportlab is unavailable."""
     if not REPORTLAB_AVAILABLE:
         return None
@@ -128,6 +132,11 @@ def build_pdf_report(title, subtitle, table_data, col_widths, chart_fig=None):
                                     spaceAfter=20, alignment=TA_CENTER)
 
     elements.append(Paragraph(title, title_style))
+    if agent_name:
+        agent_style = ParagraphStyle('AgentName', parent=styles['Normal'],
+                                     fontSize=13, textColor=colors.HexColor(DARK_GREEN),
+                                     spaceAfter=6, alignment=TA_CENTER)
+        elements.append(Paragraph(f"Prepared for {agent_name}", agent_style))
     elements.append(Paragraph(subtitle, subtitle_style))
     elements.append(Spacer(1, 0.2 * inch))
 
@@ -239,3 +248,22 @@ def create_formatted_excel(df, sheet_name='Data'):
         return buffer.getvalue()
     except Exception:
         return None
+
+
+# ── Batch zip export ─────────────────────────────────────────────────────────
+
+def build_batch_zip(files):
+    """Create a zip archive from a dict of {filename: bytes_data}.
+
+    Skips entries where bytes_data is None.
+    Returns bytes for the zip, or None if no valid files.
+    """
+    valid = {k: v for k, v in files.items() if v is not None}
+    if not valid:
+        return None
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for fname, data in valid.items():
+            zf.writestr(fname, data)
+    buf.seek(0)
+    return buf.getvalue()

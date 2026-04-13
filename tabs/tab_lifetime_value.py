@@ -1,17 +1,21 @@
-"""Tab 1 — Lifetime Value Tracker."""
+"""Tab 1 — Lifetime Value Tracker.
+
+New in v4.1: monthly toggle, cross-sell analysis, scenario comparison,
+copy-to-clipboard, agent name personalization.
+"""
 
 import pandas as pd
 import streamlit as st
 
 from config import PRODUCTS, DEFAULT_COMMISSION_PCT
-from utils import fmt, validate_numeric
-from calculations import calc_commission, sensitivity_retention
-from charts import build_revenue_bar_chart, build_sensitivity_chart
+from utils import fmt, validate_numeric, now_local
+from calculations import calc_commission, sensitivity_retention, calc_cross_sell
+from charts import build_revenue_bar_chart, build_sensitivity_chart, build_cross_sell_chart
 from exports import (
     html_wrap, build_html_table, metric_card_html,
     build_pdf_report, create_formatted_excel, REPORTLAB_AVAILABLE,
 )
-from utils import now_local
+from styling import copy_to_clipboard_button
 
 
 def render():
@@ -42,6 +46,14 @@ def render():
         'every policy they close.</p>',
         unsafe_allow_html=True,
     )
+
+    # ── Monthly / Lifetime toggle ────────────────────────────────────────────
+    view_mode = st.radio(
+        'View', ['Lifetime', 'Monthly'],
+        horizontal=True, key='t1_view_mode',
+        help='Show totals as lifetime or broken down per month',
+    )
+    show_monthly = view_mode == 'Monthly'
 
     t1_data = {}
 
@@ -107,15 +119,25 @@ def render():
             **result,
         }
 
-        st.markdown(
-            f'<div style="font-size:0.82rem;color:#555;margin-top:6px;padding-left:2px;">'
-            f'Revenue preview: {fmt(result["commission_per_year"])}/year × {yrs:.1f} years '
-            f'× {policies} policies = <strong>{fmt(result["total_revenue"])}</strong></div>',
-            unsafe_allow_html=True,
-        )
+        if show_monthly:
+            monthly = result['total_revenue'] / 12 if result['total_revenue'] else 0
+            st.markdown(
+                f'<div style="font-size:0.82rem;color:#555;margin-top:6px;padding-left:2px;">'
+                f'Monthly: <strong>{fmt(monthly)}</strong>/mo '
+                f'({fmt(result["commission_per_year"])}/yr × {yrs:.1f} yrs × {policies} policies / 12)</div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                f'<div style="font-size:0.82rem;color:#555;margin-top:6px;padding-left:2px;">'
+                f'Revenue: {fmt(result["commission_per_year"])}/yr × {yrs:.1f} yrs '
+                f'× {policies} policies = <strong>{fmt(result["total_revenue"])}</strong></div>',
+                unsafe_allow_html=True,
+            )
 
     # Grand total
     grand_total = sum(d['total_revenue'] for d in t1_data.values())
+    grand_monthly = grand_total / 12 if grand_total else 0
 
     st.divider()
     st.subheader('Summary')
@@ -123,46 +145,60 @@ def render():
     sum_col1, sum_col2 = st.columns([2, 1])
 
     with sum_col1:
-        summary_df = pd.DataFrame([
-            {
-                'Product': d['product'],
-                'Annual Premium': fmt(d['premium']),
-                'Commission %': f"{d['commission_pct']:.1f}%",
-                'Years': f"{d['years']:.1f}",
-                'Policies': d['policies'],
-                'Commission/Year': fmt(d['commission_per_year']),
-                'Lifetime Comm/Policy': fmt(d['total_commission_per_policy']),
-                'Total Commission': fmt(d['total_revenue']),
-            }
-            for d in t1_data.values()
-        ])
+        if show_monthly:
+            summary_df = pd.DataFrame([
+                {
+                    'Product': d['product'],
+                    'Commission/Month': fmt(d['total_revenue'] / 12 if d['total_revenue'] else 0),
+                    'Commission/Year': fmt(d['commission_per_year']),
+                    'Total (Lifetime)': fmt(d['total_revenue']),
+                }
+                for d in t1_data.values()
+            ])
+        else:
+            summary_df = pd.DataFrame([
+                {
+                    'Product': d['product'],
+                    'Annual Premium': fmt(d['premium']),
+                    'Commission %': f"{d['commission_pct']:.1f}%",
+                    'Years': f"{d['years']:.1f}",
+                    'Policies': d['policies'],
+                    'Commission/Year': fmt(d['commission_per_year']),
+                    'Lifetime Comm/Policy': fmt(d['total_commission_per_policy']),
+                    'Total Commission': fmt(d['total_revenue']),
+                }
+                for d in t1_data.values()
+            ])
         st.dataframe(summary_df, use_container_width=True, hide_index=True)
 
         with st.expander("ℹ️ What These Numbers Mean", expanded=False):
             st.markdown("""
-            - **Annual Premium**: What the customer forks over each year for this policy
+            - **Annual Premium**: What the customer pays per year
             - **Commission %**: Agent's cut of that premium
-            - **Years**: How long they stick around (customer retention)
-            - **Policies**: How many of these the agent has closed
-            - **Commission/Year**: What this product pays the agent annually
-            - **Lifetime Comm/Policy**: The magic number—what ONE policy is worth over its lifetime
-            - **Total Commission**: All policies of this type, added up, over time
-
-            💡 **The big idea:** That "Lifetime Comm/Policy" number? That's what the agent is
-            *really* selling when they close a policy. Not just this year's check—the whole relationship.
+            - **Years**: Customer retention period
+            - **Policies**: How many the agent has closed
+            - **Lifetime Comm/Policy**: What ONE policy is worth over its lifetime
+            - **Total Commission**: All policies of this type, over time
             """)
 
     with sum_col2:
+        display_val = fmt(grand_monthly) + '/mo' if show_monthly else fmt(grand_total)
+        display_label = 'Grand Total (Monthly)' if show_monthly else 'Grand Total Commission'
         st.markdown(
-            '<div style="background-color:#114E38;border-radius:8px;padding:14px 20px 16px 20px;'
-            'color:white;text-align:center;">'
-            '<div style="font-size:0.8rem;opacity:0.9;font-weight:600;margin-bottom:6px;">'
-            'Grand Total Commission</div>'
-            '<div class="doodle-underline" style="font-size:2rem;font-weight:700;display:inline-block;'
-            'position:relative;line-height:1.1;">' + fmt(grand_total) + '</div>'
-            '<div style="font-size:0.72rem;opacity:0.85;margin-top:6px;">'
-            '💰 The value sitting in this book</div></div>',
+            f'<div style="background-color:#114E38;border-radius:8px;padding:14px 20px 16px 20px;'
+            f'color:white;text-align:center;">'
+            f'<div style="font-size:0.8rem;opacity:0.9;font-weight:600;margin-bottom:6px;">'
+            f'{display_label}</div>'
+            f'<div class="doodle-underline" style="font-size:2rem;font-weight:700;display:inline-block;'
+            f'position:relative;line-height:1.1;">{display_val}</div>'
+            f'<div style="font-size:0.72rem;opacity:0.85;margin-top:6px;">'
+            f'💰 The value sitting in this book</div></div>',
             unsafe_allow_html=True,
+        )
+        copy_to_clipboard_button(
+            fmt(grand_total) if not show_monthly else fmt(grand_monthly),
+            label='Copy Total',
+            key='copy_grand',
         )
 
     # Revenue Breakdown chart
@@ -172,9 +208,63 @@ def render():
         d['product'].replace('🚗 ', '').replace('🏠 ', '').replace('🏢 ', '')
         for d in t1_data.values()
     ]
-    revenue_values = [d['total_revenue'] for d in t1_data.values()]
-    fig = build_revenue_bar_chart(products_list, revenue_values)
+    if show_monthly:
+        chart_values = [d['total_revenue'] / 12 for d in t1_data.values()]
+    else:
+        chart_values = [d['total_revenue'] for d in t1_data.values()]
+    fig = build_revenue_bar_chart(products_list, chart_values)
     st.plotly_chart(fig, use_container_width=True)
+
+    # ── Cross-Sell Analysis ──────────────────────────────────────────────────
+    st.subheader('Cross-Sell: Household Value by Bundle')
+    st.markdown(
+        '<p style="font-size:0.9rem;color:#666;margin-bottom:0.5rem;">'
+        'Show agents how much a household is worth when they cross-sell. '
+        'Each bar = 1 policy of each type in the bundle.</p>',
+        unsafe_allow_html=True,
+    )
+    bundles = calc_cross_sell(t1_data)
+    cs_fig = build_cross_sell_chart(bundles)
+    st.plotly_chart(cs_fig, use_container_width=True)
+
+    full_bundle = bundles[-1]
+    st.markdown(
+        f'<p style="font-size:0.88rem;color:#555;">💡 A fully cross-sold household is worth '
+        f'<strong>{fmt(full_bundle["value"])}</strong> in lifetime commission.</p>',
+        unsafe_allow_html=True,
+    )
+
+    # ── Scenario Comparison ──────────────────────────────────────────────────
+    st.subheader('Scenario Comparison: Current vs. Growth')
+    st.markdown(
+        '<p style="font-size:0.9rem;color:#666;margin-bottom:0.5rem;">'
+        '"What if they close 5 more Home policies?" Compare current book to a growth scenario.</p>',
+        unsafe_allow_html=True,
+    )
+
+    sc1, sc2, sc3 = st.columns(3)
+    with sc1:
+        extra_auto = st.number_input('Additional Auto Policies', value=0, min_value=0, step=1, key='sc_auto')
+    with sc2:
+        extra_home = st.number_input('Additional Home Policies', value=5, min_value=0, step=1, key='sc_home')
+    with sc3:
+        extra_renters = st.number_input('Additional Renters Policies', value=0, min_value=0, step=1, key='sc_renters')
+
+    extras = {'auto': extra_auto, 'home': extra_home, 'renters': extra_renters}
+    scenario_total = 0.0
+    for key, d in t1_data.items():
+        extra = extras.get(key, 0)
+        c = calc_commission(d['premium'], d['commission_pct'], d['years'], d['policies'] + extra)
+        scenario_total += c['total_revenue']
+
+    growth = scenario_total - grand_total
+    sc_col1, sc_col2, sc_col3 = st.columns(3)
+    with sc_col1:
+        st.metric('Current Book', fmt(grand_total))
+    with sc_col2:
+        st.metric('Growth Scenario', fmt(scenario_total))
+    with sc_col3:
+        st.metric('Additional Revenue', fmt(growth), delta=f'{growth / grand_total * 100:+.1f}%' if grand_total else '+0%')
 
     # ── Sensitivity Analysis ─────────────────────────────────────────────────
     st.subheader('Sensitivity: What If Retention Changes?')
@@ -204,17 +294,19 @@ def render():
         '📤 Grab Your Report</h3>',
         unsafe_allow_html=True,
     )
-    st.markdown(
-        '<p style="color:#666;font-size:0.95rem;margin-bottom:1rem;">'
-        "Email it to the agent, attach it to a proposal, or print it out. Your call.</p>",
-        unsafe_allow_html=True,
+
+    # Agent name field
+    agent_name = st.text_input(
+        'Agent Name (optional — personalizes exports)',
+        value=st.session_state.get('agent_name', ''),
+        key='agent_name',
+        placeholder='e.g. John Smith',
     )
 
     col_exp1, col_exp2, col_exp3 = st.columns(3)
 
     with col_exp1:
-        @st.cache_data
-        def _build_t1_html(_data_hash, _grand, _chart_html):
+        def _build_t1_html():
             headers = [
                 'Product', 'Annual Premium', 'Commission %', 'Years',
                 'Policies', 'Commission/Year', 'Lifetime Comm/Policy', 'Total Commission',
@@ -227,29 +319,26 @@ def render():
                     fmt(d['total_commission_per_policy']), fmt(d['total_revenue']),
                 ])
             total_row = ['GRAND TOTAL', '', '', '', '', '', '', fmt(grand_total)]
+            chart_html = fig.to_html(include_plotlyjs='cdn', config={'displayModeBar': False})
             body = (
                 '<h1>ROI Calculator Results</h1>'
                 f'<div class="subtitle">Grand Total Commission: {fmt(grand_total)}</div>'
                 + build_html_table(headers, rows, total_row)
                 + '<h2 style="margin-top:40px;">Revenue Breakdown</h2>'
-                + _chart_html
+                + chart_html
             )
-            return html_wrap('ROI Calculator Report', body).encode('utf-8')
+            return html_wrap('ROI Calculator Report', body, agent_name=agent_name or None).encode('utf-8')
 
-        chart_html = fig.to_html(include_plotlyjs='cdn', config={'displayModeBar': False})
-        data_hash = str([(d['premium'], d['commission_pct'], d['years'], d['policies']) for d in t1_data.values()])
         st.download_button(
             label='📧 Get HTML (for email)',
-            data=_build_t1_html(data_hash, grand_total, chart_html),
+            data=_build_t1_html(),
             file_name=f'roi_report_{now_local().strftime("%Y%m%d_%H%M")}.html',
             mime='text/html',
-            help='Interactive charts work in email clients',
         )
 
     with col_exp2:
         if REPORTLAB_AVAILABLE:
-            @st.cache_data
-            def _build_t1_pdf(_data_hash, _grand):
+            def _build_t1_pdf():
                 from reportlab.lib.units import inch
                 table_data = [['Product', 'Annual\nPremium', 'Comm\n%', 'Years', 'Policies',
                                'Comm/\nYear', 'Lifetime\nComm/Policy', 'Total\nCommission']]
@@ -268,16 +357,16 @@ def render():
                     'Insurance ROI Calculator',
                     f'Grand Total Commission: {fmt(grand_total)}',
                     table_data, col_widths, chart_fig=fig,
+                    agent_name=agent_name or None,
                 )
 
-            pdf_data = _build_t1_pdf(data_hash, grand_total)
+            pdf_data = _build_t1_pdf()
             if pdf_data:
                 st.download_button(
                     label='📄 Get PDF (formal)',
                     data=pdf_data,
                     file_name=f'roi_report_{now_local().strftime("%Y%m%d_%H%M")}.pdf',
                     mime='application/pdf',
-                    help='Clean print-ready format',
                 )
         else:
             st.info('📥 PDF export requires reportlab package')
@@ -303,7 +392,6 @@ def render():
                 data=excel_data,
                 file_name=f'roi_data_{now_local().strftime("%Y%m%d_%H%M")}.xlsx',
                 mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                help='Editable spreadsheet format',
             )
         else:
             st.info('📥 Excel export requires openpyxl package')

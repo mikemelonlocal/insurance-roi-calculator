@@ -1,6 +1,7 @@
-"""Inject branded CSS into the Streamlit app."""
+"""Inject branded CSS, JS helpers, and dark mode into the Streamlit app."""
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 _CSS = """
 <style>
@@ -168,9 +169,51 @@ h3 { color: #114E38 !important; font-weight: 600 !important; }
 
 div[data-testid='stAlert'] { border-radius: 8px; }
 
-@media (max-width: 768px) {
-    div[data-testid='column'] { width: 100% !important; flex: 100% !important; }
+/* Mobile: stack to 2-col then 1-col */
+@media (max-width: 900px) {
+    div[data-testid='column'] { min-width: 48% !important; }
+}
+@media (max-width: 600px) {
+    div[data-testid='column'] { width: 100% !important; flex: 100% !important; min-width: 100% !important; }
     .prod-card { margin-bottom: 12px; }
+}
+
+/* Copy-to-clipboard button */
+.copy-btn {
+    background: #47B74F; color: #fff; border: none; border-radius: 4px;
+    padding: 4px 12px; font-size: 0.75rem; font-weight: 600; cursor: pointer;
+    font-family: 'Poppins', sans-serif; margin-left: 8px; vertical-align: middle;
+}
+.copy-btn:hover { background: #114E38; }
+.copy-btn.copied { background: #114E38; }
+
+/* ── Dark mode ─────────────────────────────────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+    .stApp { background: #1a1a1a !important; }
+    p, .stMarkdown p, div[data-testid='stMarkdownContainer'] p { color: #e0e0e0 !important; }
+    h1, h2, h3 { color: #6DBE45 !important; }
+    div[data-testid='metric-container'] { background: #2a2a2a !important; border-color: #444 !important; }
+    div[data-testid='metric-container'] div[data-testid='stMetricValue'] { color: #e0e0e0 !important; }
+    div[data-testid='metric-container'] label { color: #6DBE45 !important; }
+    .prod-card { background-color: #2a2a2a !important; border-left-color: #6DBE45 !important; }
+    .prod-card-title { color: #6DBE45 !important; }
+    section[data-testid='stSidebar'] { background: #222 !important; }
+    section[data-testid='stSidebar'] * { color: #e0e0e0 !important; }
+    div[data-testid='stDataFrame'] table,
+    div[data-testid='stDataFrame'] tbody,
+    div[data-testid='stDataFrame'] tr,
+    div[data-testid='stDataFrame'] td { background-color: #2a2a2a !important; color: #e0e0e0 !important; }
+    div[data-testid='stDataFrame'] tbody tr:nth-child(even) { background-color: #333 !important; }
+    div[data-testid='stDataFrame'] * { color: #e0e0e0 !important; }
+    div[data-baseweb='select'] > div,
+    div[data-baseweb='base-input'] > div,
+    input[type='number'], input[type='text'], textarea {
+        background-color: #2a2a2a !important; color: #e0e0e0 !important; border-color: #555 !important;
+    }
+    label[data-testid='stWidgetLabel'],
+    .stNumberInput label, .stSelectbox label, .stCheckbox label { color: #6DBE45 !important; }
+    hr { border-color: #444 !important; }
+    div[data-testid='stAlert'] { background-color: #2a2a2a !important; }
 }
 </style>
 """
@@ -178,3 +221,58 @@ div[data-testid='stAlert'] { border-radius: 8px; }
 
 def inject_css():
     st.markdown(_CSS, unsafe_allow_html=True)
+
+
+def copy_to_clipboard_button(value, label="Copy", key=None):
+    """Render a small HTML button that copies *value* to the clipboard."""
+    safe_val = str(value).replace("'", "\\'").replace('"', '&quot;')
+    btn_id = f'copy_{key or id(value)}'
+    components.html(
+        f"""
+        <button class="copy-btn" id="{btn_id}" onclick="
+            navigator.clipboard.writeText('{safe_val}').then(function() {{
+                document.getElementById('{btn_id}').textContent = 'Copied!';
+                document.getElementById('{btn_id}').className = 'copy-btn copied';
+                setTimeout(function() {{
+                    document.getElementById('{btn_id}').textContent = '{label}';
+                    document.getElementById('{btn_id}').className = 'copy-btn';
+                }}, 1500);
+            }});
+        "
+        style="background:#47B74F;color:#fff;border:none;border-radius:4px;
+               padding:4px 12px;font-size:0.75rem;font-weight:600;cursor:pointer;
+               font-family:Poppins,sans-serif;"
+        >{label}</button>
+        """,
+        height=35,
+    )
+
+
+def inject_localstorage_sync():
+    """Inject JS that saves/restores session state keys to localStorage."""
+    components.html(
+        """
+        <script>
+        const STORAGE_KEY = 'melon_roi_calculator';
+
+        // On load: push saved values into Streamlit via query params
+        (function() {
+            try {
+                const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+                // Expose to parent for Streamlit to read
+                window._melonSaved = saved;
+            } catch(e) {}
+        })();
+
+        // Listen for postMessage from Streamlit to save state
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'melon_save_state') {
+                try {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(event.data.state));
+                } catch(e) {}
+            }
+        });
+        </script>
+        """,
+        height=0,
+    )
