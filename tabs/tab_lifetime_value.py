@@ -238,11 +238,6 @@ def render():
 
     # ── Scenario Comparison ──────────────────────────────────────────────────
     st.subheader('Scenario Comparison: Current vs. Growth')
-    st.markdown(
-        '<p style="font-size:0.9rem;color:#666;margin-bottom:0.5rem;">'
-        '"What if they close 5 more Home policies?" Compare current book to a growth scenario.</p>',
-        unsafe_allow_html=True,
-    )
 
     sc1, sc2, sc3 = st.columns(3)
     with sc1:
@@ -251,6 +246,21 @@ def render():
         extra_home = st.number_input('Additional Home Policies', value=5, min_value=0, step=1, key='sc_home')
     with sc3:
         extra_renters = st.number_input('Additional Renters Policies', value=0, min_value=0, step=1, key='sc_renters')
+
+    # Build dynamic description
+    parts = []
+    if extra_auto:
+        parts.append(f'{extra_auto} more Auto')
+    if extra_home:
+        parts.append(f'{extra_home} more Home')
+    if extra_renters:
+        parts.append(f'{extra_renters} more Renters')
+    scenario_desc = ' + '.join(parts) if parts else 'no additional policies'
+    st.markdown(
+        f'<p style="font-size:0.9rem;color:#666;margin-bottom:0.5rem;">'
+        f'"What if they close <strong>{scenario_desc}</strong>?" Compare current book to a growth scenario.</p>',
+        unsafe_allow_html=True,
+    )
 
     extras = {'auto': extra_auto, 'home': extra_home, 'renters': extra_renters}
     scenario_total = 0.0
