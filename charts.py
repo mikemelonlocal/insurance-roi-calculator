@@ -144,14 +144,13 @@ def build_pareto_scatter(combo_rows, effective_budget):
         ))
 
     fig.update_layout(
-        **_base_layout(height=450),
+        **_base_layout(height=450, margin=dict(t=60, b=80, l=60, r=30)),
         xaxis=dict(title=dict(text='Total Closed-Won Leads (Policies)', font=dict(color='#1a1a1a')),
                    showgrid=True, gridcolor=BORDER, tickfont=_AXIS_TICK),
         yaxis=dict(title=dict(text='Total Revenue', font=dict(color='#1a1a1a')),
                    showgrid=True, gridcolor=BORDER, tickprefix='$', tickfont=_AXIS_TICK),
         legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1,
                     font=dict(color='#1a1a1a')),
-        margin=dict(t=60, b=80, l=60, r=30),
     )
     return fig
 
