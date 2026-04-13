@@ -165,46 +165,64 @@ def render(t1_data=None):
     st.subheader('Goal Tracker: How Close Are You?')
     st.markdown(
         '<p style="font-size:0.9rem;color:#666;margin-bottom:0.5rem;">'
-        'Enter how many policies the agent has closed this month to see progress toward break-even.</p>',
+        'Enter how many policies the agent has closed this month across all products.</p>',
         unsafe_allow_html=True,
     )
 
     goal_cols = st.columns(len(keys))
     for i, (col, k) in enumerate(zip(goal_cols, keys)):
-        target = be[k]
         with col:
-            closed = st.number_input(
+            st.number_input(
                 f'{t2_data[k]["product"]} Closed This Month',
                 value=0, min_value=0, step=1,
                 key=f'goal_{k}',
             )
-            if target > 0:
-                gauge = build_goal_gauge(closed, target, t2_data[k]['product'])
-                st.plotly_chart(gauge, use_container_width=True)
-                pct = min(closed / target * 100, 100)
-                if pct >= 100:
-                    st.success(f'Break-even reached!')
-                elif pct >= 50:
-                    st.info(f'{target - closed} more to break even')
-                else:
-                    st.warning(f'{target - closed} more to break even')
 
-    # Total revenue from closed policies this month
-    total_closed_rev = sum(
-        st.session_state.get(f'goal_{k}', 0) * t2_data[k]['rev_per_close']
-        for k in keys
-    )
+    # Calculate combined revenue from all closed policies
+    closed_counts = {k: st.session_state.get(f'goal_{k}', 0) for k in keys}
+    total_closed_rev = sum(closed_counts[k] * t2_data[k]['rev_per_close'] for k in keys)
     remaining = max(0, effective_budget - total_closed_rev)
+    pct = min(total_closed_rev / effective_budget * 100, 100) if effective_budget > 0 else 0
 
-    tcr1, tcr2 = st.columns(2)
+    # Revenue breakdown per product
+    rev_parts = []
+    for k in keys:
+        cnt = closed_counts[k]
+        if cnt > 0:
+            rev = cnt * t2_data[k]['rev_per_close']
+            name = t2_data[k]['product'].replace('🚗 ', '').replace('🏠 ', '').replace('🏢 ', '')
+            rev_parts.append(f'{cnt} {name} = {fmt(rev)}')
+
+    # Progress bar
+    bar_color = '#47B74F' if pct >= 100 else '#F1CB20' if pct >= 50 else '#FF6B6B'
+    st.markdown(
+        f'<div style="margin:12px 0 6px 0;">'
+        f'<div style="background:#e0e0e0;border-radius:8px;height:28px;overflow:hidden;">'
+        f'<div style="background:{bar_color};height:100%;width:{pct:.1f}%;border-radius:8px;'
+        f'transition:width 0.3s;display:flex;align-items:center;justify-content:center;'
+        f'color:white;font-weight:700;font-size:0.8rem;">'
+        f'{pct:.0f}%</div></div></div>',
+        unsafe_allow_html=True,
+    )
+
+    # Summary metrics
+    tcr1, tcr2, tcr3 = st.columns(3)
     with tcr1:
         st.metric('Revenue from Closed Policies', fmt(total_closed_rev))
+        if rev_parts:
+            st.markdown(
+                '<div style="font-size:0.8rem;color:#666;">' + ' | '.join(rev_parts) + '</div>',
+                unsafe_allow_html=True,
+            )
         copy_to_clipboard_button(fmt(total_closed_rev), label='Copy', key='copy_closed_rev')
     with tcr2:
+        st.metric('Budget Target', fmt(effective_budget))
+    with tcr3:
         if remaining > 0:
-            st.metric('Still Needed to Break Even', fmt(remaining))
+            st.metric('Still Needed', fmt(remaining))
         else:
-            st.metric('Above Break-Even', fmt(-remaining + (total_closed_rev - effective_budget)))
+            surplus = total_closed_rev - effective_budget
+            st.metric('Above Break-Even', fmt(surplus), delta=f'+{surplus / effective_budget * 100:.0f}%' if effective_budget else '')
 
     st.divider()
     st.subheader('All Combinations')
