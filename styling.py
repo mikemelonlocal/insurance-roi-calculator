@@ -50,9 +50,18 @@ p, label, input, select, textarea, button, .stMetric {
 header[data-testid='stHeader'] { background: #114E38; color: #FFFFFF; }
 header[data-testid='stHeader'] * { color: #FFFFFF !important; }
 
-/* Sidebar */
-section[data-testid='stSidebar'] { background: #FEF8E9; }
+/* Sidebar — force light regardless of theme */
+section[data-testid='stSidebar'] { background: #FEF8E9 !important; }
 section[data-testid='stSidebar'] > div { padding-top: 2rem; }
+section[data-testid='stSidebar'] * { color: #1a1a1a !important; }
+section[data-testid='stSidebar'] h1,
+section[data-testid='stSidebar'] h2,
+section[data-testid='stSidebar'] h3 { color: #114E38 !important; }
+section[data-testid='stSidebar'] label { color: #114E38 !important; }
+
+/* Force light main area */
+.stApp, [data-testid="stAppViewContainer"] { background: #FFFFFF !important; }
+[data-testid="stMain"] { background: #FFFFFF !important; }
 
 /* Tabs */
 div[data-baseweb='tab-list'] { border-bottom: 2px solid #114E38; gap: 4px; }
@@ -187,42 +196,7 @@ div[data-testid='stAlert'] { border-radius: 8px; }
 .copy-btn:hover { background: #114E38; }
 .copy-btn.copied { background: #114E38; }
 
-/* ── Dark mode — scoped to Streamlit's theme, not OS preference ──────── */
-[data-testid="stApp"][class*="dark"],
-[data-testid="stAppViewContainer"].st-emotion-cache-dark,
-html[data-theme="dark"] .stApp,
-.stApp[data-theme="dark"] {
-    background: #1a1a1a !important;
-}
-[data-theme="dark"] p,
-[data-theme="dark"] .stMarkdown p,
-[data-theme="dark"] div[data-testid='stMarkdownContainer'] p { color: #e0e0e0 !important; }
-[data-theme="dark"] h1, [data-theme="dark"] h2, [data-theme="dark"] h3 { color: #6DBE45 !important; }
-[data-theme="dark"] div[data-testid='metric-container'] { background: #2a2a2a !important; border-color: #444 !important; }
-[data-theme="dark"] div[data-testid='metric-container'] div[data-testid='stMetricValue'] { color: #e0e0e0 !important; }
-[data-theme="dark"] div[data-testid='metric-container'] label { color: #6DBE45 !important; }
-[data-theme="dark"] .prod-card { background-color: #2a2a2a !important; border-left-color: #6DBE45 !important; }
-[data-theme="dark"] .prod-card-title { color: #6DBE45 !important; }
-[data-theme="dark"] section[data-testid='stSidebar'] { background: #222 !important; }
-[data-theme="dark"] div[data-testid='stDataFrame'] table,
-[data-theme="dark"] div[data-testid='stDataFrame'] tbody,
-[data-theme="dark"] div[data-testid='stDataFrame'] tr,
-[data-theme="dark"] div[data-testid='stDataFrame'] td { background-color: #2a2a2a !important; color: #e0e0e0 !important; }
-[data-theme="dark"] div[data-testid='stDataFrame'] tbody tr:nth-child(even) { background-color: #333 !important; }
-[data-theme="dark"] div[data-testid='stDataFrame'] * { color: #e0e0e0 !important; }
-[data-theme="dark"] div[data-baseweb='select'] > div,
-[data-theme="dark"] div[data-baseweb='base-input'] > div,
-[data-theme="dark"] input[type='number'],
-[data-theme="dark"] input[type='text'],
-[data-theme="dark"] textarea {
-    background-color: #2a2a2a !important; color: #e0e0e0 !important; border-color: #555 !important;
-}
-[data-theme="dark"] label[data-testid='stWidgetLabel'],
-[data-theme="dark"] .stNumberInput label,
-[data-theme="dark"] .stSelectbox label,
-[data-theme="dark"] .stCheckbox label { color: #6DBE45 !important; }
-[data-theme="dark"] hr { border-color: #444 !important; }
-[data-theme="dark"] div[data-testid='stAlert'] { background-color: #2a2a2a !important; }
+/* Dark mode removed — this is a branded light-only internal tool */
 </style>
 """
 
