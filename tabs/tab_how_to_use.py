@@ -11,31 +11,39 @@ def render():
 
     st.subheader('🎯 Quick Overview')
     st.markdown('''
-    This tool has **three main calculators** to help you understand insurance agent economics:
+    This tool has **three main calculators** plus supporting features:
 
-    1. **📊 ROI Calculator** - Calculate lifetime commission value from closed policies
-    2. **⚖️ Break-Even Simulator** - Find optimal policy mix to hit revenue targets
-    3. **🌐 Lead Channels** - Compare cost-effectiveness of different lead sources
+    1. **💰 Lifetime Value Tracker** - Total lifetime commission, monthly view, cross-sell analysis, scenario comparison
+    2. **🎯 Path to Profit** - Break-even combinations with goal tracking
+    3. **🔍 Lead Cost Showdown** - Compare lead channels with ROI per channel
+    4. **💬 Talk Tracks** - Conversation frameworks for presenting data to agents
     ''')
 
     st.divider()
 
-    with st.expander('📊 **Tab 1: ROI Calculator** - How It Works', expanded=False):
+    with st.expander('💰 **Tab 1: Lifetime Value Tracker** - How It Works', expanded=False):
         st.markdown('''
         ### Purpose
         Calculate the **total lifetime commission** an insurance agent earns from a customer across all their policies.
 
         ### How to Use
-        1. **Select a preset** from the dropdown (Average, Conservative, Moderate, Aggressive, High-Value Client)
-        2. **Adjust values** for each insurance product:
-           - **Annual Premium** - Yearly cost the customer pays for their policy
+        1. **Select a preset** from the sidebar dropdown (Average, Conservative, Moderate, Aggressive, High-Value Client)
+        2. **Toggle Lifetime / Monthly** view to switch how totals are displayed
+        3. **Adjust values** for each insurance product:
+           - **Annual Premium** - Yearly cost the customer pays
            - **Commission %** - Agent's commission rate (typically 10%)
            - **Years as Customer** - Expected policy retention time
-           - **Number of Policies** - How many policies the customer has
-        3. View the **Summary Table** showing commission breakdown
-        4. See the **Revenue Breakdown** chart visualizing total commission by product
-        5. Check the **Sensitivity Analysis** to see how retention changes affect the total
-        6. **Export** results as HTML, PDF, or Excel to share with agents
+           - **Number of Policies** - How many the agent has closed
+        4. View the **Summary Table** and use the **Copy Total** button to grab the grand total
+        5. See the **Revenue Breakdown** chart
+
+        ### New Features
+        - **Monthly / Lifetime Toggle** - Switch between seeing totals as lifetime or per-month. Agents think monthly — use this view when talking about recurring income.
+        - **Cross-Sell Analysis** - Shows the lifetime value of a household by bundle (Auto only, Home only, Auto + Home, all three). Use this to show agents why cross-selling matters.
+        - **Scenario Comparison** - Enter additional policies (e.g. "What if they close 5 more Home policies?") and see the revenue difference side-by-side.
+        - **Sensitivity Analysis** - See how the grand total changes when retention shifts by +/- 1 or 2 years.
+        - **Agent Name** - Enter the agent's name in the export section to personalize HTML and PDF reports with "Prepared for [Name]".
+        - **Copy to Clipboard** - Click "Copy Total" to grab the grand total for quick pasting into emails or Slack.
 
         ### Example Scenario
         **"Average New Client"** - A typical household signs up:
@@ -44,23 +52,28 @@ def render():
         - 1 Renters policy ($180/year) x 1 year = **$18 commission**
         - **Grand Total: $1,855.50**
 
-        💡 **Pro Tip:** Use the "High-Value Client" preset when discussing ROI with agents who target affluent demographics.
+        💡 **Pro Tip:** Use the Monthly view when agents ask "What does this mean for me each month?" and the Cross-Sell chart when pushing bundled policies.
         ''')
 
     st.divider()
 
-    with st.expander('⚖️ **Tab 2: Break-Even Simulator** - How It Works', expanded=False):
+    with st.expander('🎯 **Tab 2: Path to Profit** - How It Works', expanded=False):
         st.markdown('''
         ### Purpose
         Find the **minimum policy combinations** an agent needs to hit their revenue target.
 
         ### How to Use
         1. **Set Monthly Budget** - Enter the agent's monthly spend on leads/marketing
-        2. **Toggle "Use Tab 1 values"** (on by default) to sync product assumptions
-        3. The tool automatically calculates **break-even points** (policies needed to cover budget)
-        4. Use **filter dropdowns** to explore specific scenarios
-        5. View **Pareto-efficient combinations** (optimal mixes with no wasted effort)
-        6. **Export** results for agent coaching or planning sessions
+        2. **"Use Tab 1 values"** is on by default — product assumptions sync from Tab 1
+        3. The tool calculates **single-product break-evens** (policies needed of just one type)
+        4. **Goal Tracker** - Enter how many policies the agent has closed this month. Gauge charts show progress toward break-even for each product.
+        5. Use **filter dropdowns** to explore specific combinations (e.g. "exactly 3 Home policies")
+        6. View **Pareto-efficient combinations** — the smartest paths to hit the goal
+        7. **Export** results for agent coaching or planning sessions
+
+        ### New Features
+        - **Goal Tracker** - Gauge charts show real-time progress. Enter closed policies this month and see how close the agent is to break-even. Shows remaining revenue needed.
+        - **Copy to Clipboard** - Copy the closed revenue total for quick sharing.
 
         ### Understanding the Results
         - **Total Closed-Won Leads** - Total policies across all products
@@ -73,32 +86,41 @@ def render():
 
         ### What is "Pareto-Efficient"?
         A combination is Pareto-efficient if no other combination uses fewer policies in ALL categories
-        while still meeting the budget. The tool automatically filters out dominated combinations.
+        while still meeting the budget. The tool filters out wasteful combinations automatically.
 
-        💡 **Pro Tip:** Use this when coaching agents on goal-setting.
+        💡 **Pro Tip:** During a coaching call, pull up the Goal Tracker and plug in the agent's actual closed count this month. The gauge instantly shows how close they are.
         ''')
 
     st.divider()
 
-    with st.expander('🌐 **Tab 3: Lead Channels** - How It Works', expanded=False):
+    with st.expander('🔍 **Tab 3: Lead Cost Showdown** - How It Works', expanded=False):
         st.markdown('''
         ### Purpose
-        Compare the **fully-loaded cost** of closing one household from different lead sources.
+        Compare the **fully-loaded cost** of closing one household from different lead sources, and see the **net ROI** per channel.
 
         ### How to Use
         1. **Set Hourly Wage** - Agent or staff hourly rate
-        2. **Configure lead channels** (add or remove channels as needed)
-        3. For each channel, set: Cost per Lead, Closing Rate %, Hours per Lead
-        4. View **side-by-side comparison** showing total cost to close
-        5. **Export** results for budget planning or agent strategy discussions
+        2. **Configure lead channels** — starts with Internet Leads and SF.com Leads by default
+        3. **Add or remove channels** using the buttons (minimum 2, no maximum)
+        4. For each channel, set: Channel Name, Cost per Lead, Closing Rate %, Hours per Lead
+        5. View the **Cost to Close Comparison** chart and winner callout
+        6. Check the **ROI per Channel** section (requires Tab 1 data) to see cost vs. commission earned
+        7. Review **Detail Cards** for each channel's full breakdown
+        8. **Export** results for budget planning or agent strategy discussions
+
+        ### New Features
+        - **Dynamic Channels** - Add as many lead channels as you need (not limited to 2). Compare Internet Leads, SF.com, Google LSA, referrals, etc. side by side.
+        - **ROI per Channel** - Combines Tab 3 cost data with Tab 1 commission data to show the net profit per closed household for each channel. A green number means the channel is profitable; red means it costs more to close than the agent earns.
+        - **Copy ROI** - Click to copy the net ROI value for any channel.
 
         ### Understanding the Metrics
         - **Quotes to Close 1 HH** = 100 / Closing Rate %
         - **Lead Cost to Close** = Cost per Lead x Quotes to Close
         - **Payroll to Close** = Hours per Lead x Quotes to Close x Hourly Wage
         - **TOTAL COST TO CLOSE** = Lead Cost + Payroll Cost
+        - **Net ROI** = Average Commission Earned - Total Cost to Close
 
-        💡 **Pro Tip:** Use the "Add Channel" button to compare 3+ lead sources at once.
+        💡 **Pro Tip:** When an agent says "Internet leads are junk," add their actual close rates and show the ROI comparison. The math usually tells a different story.
         ''')
 
     st.divider()
@@ -124,13 +146,17 @@ def render():
         **Lead Channel Comparison**
         - Don't just compare cost-per-lead
         - Factor in closing rate AND time investment
-        - Lower close rates = more payroll cost
+        - Check the ROI section to see if a channel is actually profitable
+        - Add custom channels for referrals, events, etc.
         ''')
         st.markdown('''
-        **Exporting Data**
+        **Sharing & Exporting**
         - Use **HTML** for rich formatted reports to share with team
         - Use **PDF** for professional agent-facing documents
         - Use **Excel** to import into spreadsheets for further analysis
+        - Use **Batch ZIP** (bottom of page) to download all reports at once
+        - **Generate Share Link** in the sidebar to create a URL with your current inputs
+        - Add the **Agent Name** field to personalize exports with "Prepared for [Name]"
         ''')
 
     st.divider()
@@ -176,11 +202,23 @@ def render():
 
     with st.expander('Version History'):
         st.markdown('''
+        **Version 4.1** (April 2026)
+        - Monthly / Lifetime view toggle in Tab 1
+        - Cross-sell analysis showing household value by bundle
+        - Scenario comparison ("What if they close 5 more?")
+        - Goal tracker with gauge charts in Tab 2
+        - ROI per channel in Tab 3 (cost vs. commission earned)
+        - Dynamic lead channels (add/remove N channels)
+        - Copy-to-clipboard buttons for key numbers
+        - Agent name field for personalized exports
+        - URL query params for shareable scenarios
+        - Batch ZIP export (all tabs in one download)
+        - Forced light theme for consistent branding
+
         **Version 4.0** (April 2026)
         - Modular codebase refactor for maintainability
         - Added sensitivity analysis (retention what-if) to Tab 1
-        - Dynamic lead channels (add/remove) in Tab 3
-        - Performance-optimized break-even combinations (early termination, iteration cap)
+        - Performance-optimized break-even combinations
         - Improved Pareto filtering algorithm
         - Tab 1 values sync to Tab 2 by default
         - Added caching for export generation
@@ -208,6 +246,7 @@ def render():
         **Data & Assumptions:**
         - Premium values are national averages
         - Does not account for policy cancellations or mid-term adjustments
+        - ROI per channel uses a simple average across all product commissions
 
         **Calculations:**
         - Break-Even Simulator assumes all leads convert at the same rate
@@ -216,8 +255,10 @@ def render():
 
         **Technical:**
         - Very large budgets (>$100k) with low premiums may hit the iteration cap
-        - Export files must be downloaded individually
+        - Batch ZIP includes Tab 1 reports only (Tab 2/3 exports are available individually)
         - PDF export requires reportlab package
+        - Copy-to-clipboard requires HTTPS (works on Streamlit Cloud, may not work on localhost HTTP)
+        - Share links encode Tab 1 values only
 
         If you encounter issues, contact Mike Long.
         ''')
